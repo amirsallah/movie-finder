@@ -1,3 +1,5 @@
+import json
+
 from fastapi import FastAPI
 import redis
 import requests
@@ -7,7 +9,7 @@ app = FastAPI()
 
 redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses=True)
 
-es_client = Elasticsearch('https://elasticsearch:9200')
+es_client = Elasticsearch('http://elasticsearch:9200', http_auth=('elastic', 'elasticpass'))
 
 API_URL = "https://imdb-top-100-movies.p.rapidapi.com/"
 
@@ -22,11 +24,11 @@ def redis(name):
     if result:
         return result, True
     else:
-        return None, False
+        return "not found in redis", False
 
 
-def save_to_redis(name):
-    res = redis_client.set(name)
+def save_to_redis(name, data):
+    res = redis_client.set(name, json.dumps(data))
     if res is not None:
         return True
     else:
@@ -34,11 +36,11 @@ def save_to_redis(name):
 
 
 def elastic(name):
-    res = es_client.search(index="movies", body={"query": {"match": {"title": name}}})
+    res = es_client.search(index="your_index_name", body={"query": {"match": {"Series_Title": name}}})
     if res['hits']['total']['value'] > 0:
         return res['hits']['hits'][0]['_source'], True
     else:
-        return None, False
+        return "not found in elastic", False
 
 
 def api_call(name):
@@ -46,22 +48,26 @@ def api_call(name):
     if response.status_code == 200:
         return response.json(), True
     else:
-        return None, False
+        return "not found in api-call", False
 
 
 @app.get("/{name}")
 async def find_movie(name: str):
+    print("SEARCH REDIS")
     result, found = redis(name)
     if found:
+        print("in redis")
         return result
+    print(result)
+    print("SEARCH-ELASTICS")
     result, found = elastic(name)
     if found:
-        await redis_client.set(name, result)
-        await save_to_redis(name)
+        print("in elastic")
+        save_to_redis(name, result)
         return result
     result, found = api_call(name)
     if found:
-        await redis_client.set(name, result)
-        await save_to_redis(name)
+        print("in api-call")
+        save_to_redis(name, result)
         return result
     return {"message": "Not Found"}
