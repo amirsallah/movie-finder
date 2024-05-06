@@ -16,6 +16,14 @@ services:
   elasticsearch:
     image: "elastic"
     environment:
+      - cluster.name=elastic-udt-cluster
+      - ELASTIC_USERNAME=elastic
+      - ELASTIC_PASSWORD=elasticpass
       - discovery.type=single-node
+      - xpack.security.enabled=true
+      - node.name=es01
+      - bootstrap.memory_lock=true
+      #- node.max_local_storage_nodes=4
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
