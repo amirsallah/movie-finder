@@ -11,11 +11,11 @@ redis_client = redis.StrictRedis(host='redis', port=6379, db=0, decode_responses
 
 es_client = Elasticsearch('http://elasticsearch:9200', http_auth=('elastic', 'elasticpass'))
 
-API_URL = "https://imdb-top-100-movies.p.rapidapi.com/"
+API_URL = "https://imdb188.p.rapidapi.com/api/v1/searchIMDB"
 
 API_headers = {
-    "X-RapidAPI-Key": "SIGN-UP-FOR-KEY",
-    "X-RapidAPI-Host": "imdb-top-100-movies.p.rapidapi.com"
+    "X-RapidAPI-Key": "90daada7acmshf985d8bc7b14882p1efb7ajsn5af69d3c274f",
+    "X-RapidAPI-Host": "imdb188.p.rapidapi.com"
 }
 
 
@@ -44,10 +44,13 @@ def elastic(name):
 
 
 def api_call(name):
-    response = requests.get(API_URL + name)
+    querystring = {"query": name}
+    response = requests.get(API_URL, headers=API_headers, params=querystring)
     if response.status_code == 200:
         return response.json(), True
     else:
+        print(response.json())
+        print(response.status_code)
         return "not found in api-call", False
 
 
@@ -65,9 +68,12 @@ async def find_movie(name: str):
         print("in elastic")
         save_to_redis(name, result)
         return result
+    print(result)
+    print("SEARCH-API-CALL")
     result, found = api_call(name)
     if found:
         print("in api-call")
         save_to_redis(name, result)
         return result
+    print(result)
     return {"message": "Not Found"}
